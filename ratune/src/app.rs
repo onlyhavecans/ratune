@@ -7626,10 +7626,13 @@ impl App {
     }
 
     /// Clear an expired status flash (call once per frame in the main loop).
-    pub fn tick_status_flash(&mut self) {
+    /// Returns true when a flash expired (the status bar needs a redraw).
+    pub fn tick_status_flash(&mut self) -> bool {
+        let mut changed = false;
         if let Some((_, deadline)) = &self.status_flash {
             if Instant::now() >= *deadline {
                 self.status_flash = None;
+                changed = true;
             }
         }
         if self
@@ -7637,7 +7640,9 @@ impl App {
             .is_some_and(|deadline| Instant::now() >= deadline)
         {
             self.scrobble_ok_until = None;
+            changed = true;
         }
+        changed
     }
 
     /// True briefly after a scrobble succeeds (status bar shows ✓).
@@ -7708,15 +7713,17 @@ impl App {
         let _ = playlist_id;
     }
 
-    pub fn tick_playlist_tracks_fetch(&mut self) {
+    /// Returns true when the debounced fetch fired (a redraw is needed).
+    pub fn tick_playlist_tracks_fetch(&mut self) -> bool {
         let Some(deadline) = self.playlist_tracks_fetch_deadline else {
-            return;
+            return false;
         };
         if Instant::now() < deadline {
-            return;
+            return false;
         }
         self.playlist_tracks_fetch_deadline = None;
         self.sync_playlist_tracks_for_selection_now();
+        true
     }
 
     fn sync_playlist_tracks_for_selection_now(&mut self) {
